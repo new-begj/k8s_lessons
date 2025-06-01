@@ -1,0 +1,35 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: homework-web
+  namespace: homework
+spec:
+  volumes:
+    - name: shared-data
+      emptyDir: {}
+  initContainers:
+    - name: init-index
+      image: busybox
+      command:
+        - sh
+        - -c
+        - |
+          echo "<html><body><h1>Hello from Init Container</h1></body></html>" > /init/index.html
+      volumeMounts:
+        - name: shared-data
+          mountPath: /init
+  containers:
+    - name: web-server
+      image: python:3.9-slim
+      ports:
+        - containerPort: 8000
+      volumeMounts:
+        - name: shared-data
+          mountPath: /homework
+      command:
+        - sh
+        - -c
+        - |
+          trap "rm -f /homework/index.html" EXIT
+          cd /homework
+          python3 -m http.server 8000
