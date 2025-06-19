@@ -1,0 +1,57 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: homework_web_deployment
+  namespace: homework
+spec:
+  replicas: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 1
+  selector:
+    matchLabels:
+      app: homework_web
+  template:
+    metadata:
+      labels:
+        app: homework_web
+    spec:
+      volumes:
+        - name: web
+          emptyDir: {}
+      initContainers:
+        - name: init_index
+          image: busybox
+          command:
+            - sh
+            - -c
+            - |
+              echo "<html><body><h1>Hello</h1></body></html>" > /init/index.html
+          volumeMounts:
+            - name: shared_volume
+              mountPath: /init
+      containers:
+        - name: web_container
+          image: python:3.9-slim
+          ports:
+            - containerPort: 8000
+          volumeMounts:
+            - name: web_volume
+              mountPath: /homework
+          command:
+            - sh
+            - -c
+            - |
+              trap "rm -f /homework/index.html" EXIT
+              cd /homework
+              python3 -m http.server 8000
+          readinessProbe:
+            exec:
+              command:
+                - test
+                - -f
+                - /homework/index.html
+            initialDelaySeconds: 3
+            periodSeconds: 5
